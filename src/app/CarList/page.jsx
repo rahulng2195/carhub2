@@ -56,7 +56,6 @@ const CarList = () => {
   useEffect(() => {
     findcars();
   }, []);
-
   useEffect(() => {
     const data = {
       make: searchParams.get("make"),
@@ -65,28 +64,38 @@ const CarList = () => {
       distance: searchParams.get("distance"),
       carType: searchParams.get("carType"),
     };
-
+    localStorage.setItem("savedFormData", JSON.stringify(data));
     setCarData(data);
     const anyFilterPresent = Object.values(data).some((value) => value);
-    if (FilterCar?.length > 0) {
-      if (anyFilterPresent) {
-        const FilteredCars = FilterCar?.filter((car) => {
-          return (
-            (data.make && car.make === data.make) ||
-            (data.model && car.model === data.model) ||
-            (data.zip && car.zippostal === data.zip) ||
-            (data.distance && car.distance === data.distance) ||
-            (data.carType && car.cartype === data.carType)
-          );
-        });
-        setCars(FilteredCars);
-        setshowcars(FilteredCars)
-      } else {
-        setCars(FilterCar);
-      }
+    // If no filters are applied, show all cars from the API
+    if (!anyFilterPresent) {
+      setCars(FilterCar);
+      setshowcars(FilterCar);
+      return; // Exit early
     }
-  }, [searchParams, FilterCar]); 
-
+  
+    // Apply filters if any
+    if (FilterCar?.length > 0) {
+      const FilteredCars = FilterCar.filter((car) => {
+        return (
+          (!data.make || car.make === data.make) &&
+          (!data.model || car.model === data.model) ||
+          (!data.zip && car.zippostal === data.zip) ||
+          (!data.distance && car.distance === data.distance) ||
+          (!data.carType && car.cartype === data.carType)
+        );
+      });
+      setCars(FilteredCars);
+      setshowcars(FilteredCars);
+    } else {
+   
+      setCars([]);
+      setshowcars([]);
+    }
+  }, [searchParams, FilterCar]);
+  
+  
+console.log("show",showcars);
   const handleFilterSubmit = (data) => {
     const refinefilter = FilterCar.filter((car) => {
     const minPrice = Number(data.minprice);
@@ -138,35 +147,47 @@ const handlecarfilter = (data) => {
   });
 
   // setCars(filterBycar);
-  console.log("filter by car", filterBycar);
+ 
   setshowcars(filterBycar);
+  setCars(filterBycar)
 };
 
 
   const searchDealerHandler = (dealerName) => {
-    const filteredDealers = cars.filter((item) => {
+    const filteredDealers = FilterCar?.filter((item) => {
       return dealerName && item.dealername === dealerName;
     });
     setshowcars(filteredDealers);
+    setCars(filteredDealers);
   };
 
   const handleSort = (e) => {
     const value = e.target.value;
     if (value === "recentlyadded"){
       const today = new Date().toISOString().split('T')[0];
-      const filteredCars = cars?.filter((car) => {
+      const filteredCars = FilterCar.filter((car) => {
         return (car.updatedAt.split('T')[0] === today);
       });
       
-      // setCars(filteredCars || []); 
+      setCars(filteredCars || []); 
       setshowcars(filteredCars || [])
     } else {
-      const FilterSort = cars.filter((car) => {
+      const FilterSort = FilterCar.filter((car) => {
         return value && car.cartype === value;
       });
-      // setCars(FilterSort);
+      setCars(FilterSort);
       setshowcars(FilterSort);
     }
+  };
+  const handleResetSearchParams = () => {
+    const queryParams = new URLSearchParams();
+    queryParams.delete("make");
+    queryParams.delete("model");
+    queryParams.delete("zip");
+    queryParams.delete("distance");
+    queryParams.delete("carType");
+    window.history.replaceState({}, document.title, window.location.pathname + "?" + queryParams.toString());
+
   };
   
 
@@ -206,7 +227,7 @@ const handlecarfilter = (data) => {
               Refine Filter
             </div>
             {handleRefinshow && (
-              <RefineBySearchForm onFilterSubmit={handleFilterSubmit} initialValues={carData} />
+              <RefineBySearchForm onFilterSubmit={handleFilterSubmit} onResetSearchParams={handleResetSearchParams}  />
             )}
             <div
               className="mt-8 text-center bg-gray-100 p-2 font-bold cursor-pointer hover:bg-gray-50"
@@ -214,7 +235,7 @@ const handlecarfilter = (data) => {
             >
               New car
             </div>
-            {showCarForm && <NewCarForm onFilterCar={handlecarfilter} initialValues={carData} />}
+            {showCarForm && <NewCarForm onFilterCar={handlecarfilter} initialValues={carData}/>}
           </div>
           <div className="md:w-[75%] p-2">
             <div className="flex justify-between ">
